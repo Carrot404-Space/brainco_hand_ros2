@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<library path="brainco_hand_touch_broadcaster">
+  <class
+    name="brainco_hand_touch_broadcaster/TouchStateBroadcaster"
+    type="brainco_hand_touch_broadcaster::TouchStateBroadcaster"
+    base_class_type="controller_interface::ControllerInterface">
+    <description>Broadcaster for BrainCo hand touch state interfaces.</description>
+  </class>
+</library>
