@@ -1,8 +1,21 @@
+// Copyright 2026 Joyson Robot
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <gtest/gtest.h>
 #include <limits>
 #include <string>
 #include <vector>
-
-#include <gtest/gtest.h>
 
 #include "brainco_hand_touch_broadcaster/touch_state_broadcaster.hpp"
 
@@ -120,30 +133,33 @@ TEST(TouchStateBroadcasterDetailTest, BuildsStateInterfaceConfigurationFromValid
   const auto sensor_names = brainco_hand_touch_broadcaster::detail::expected_sensor_names("right");
   const auto interface_names =
     brainco_hand_touch_broadcaster::detail::configured_state_interface_names(
-      "right", sensor_names);
+    "right", sensor_names);
 
   ASSERT_EQ(interface_names.size(), 25u);
   EXPECT_EQ(interface_names.front(), "right_thumb_touch/normal_force");
   EXPECT_EQ(interface_names.back(), "right_pinky_touch/status");
   EXPECT_TRUE(
-    brainco_hand_touch_broadcaster::detail::configured_state_interface_names("right", {}).empty());
+    brainco_hand_touch_broadcaster::detail::configured_state_interface_names("right", {})
+    .empty());
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::detail::configured_state_interface_names(
       "invalid", sensor_names)
-      .empty());
+    .empty());
 }
 
 TEST(TouchStateBroadcasterDetailTest, MatchesExpectedInterfaceNamesExactly)
 {
   const auto expected =
     brainco_hand_touch_broadcaster::detail::configured_state_interface_names(
-      "left", brainco_hand_touch_broadcaster::detail::expected_sensor_names("left"));
+    "left", brainco_hand_touch_broadcaster::detail::expected_sensor_names("left"));
 
-  EXPECT_TRUE(brainco_hand_touch_broadcaster::detail::has_expected_interface_names(expected, expected));
+  EXPECT_TRUE(
+    brainco_hand_touch_broadcaster::detail::has_expected_interface_names(expected, expected));
 
   auto actual = expected;
   actual.back() = "left_pinky_touch/proximity";
-  EXPECT_FALSE(brainco_hand_touch_broadcaster::detail::has_expected_interface_names(expected, actual));
+  EXPECT_FALSE(
+    brainco_hand_touch_broadcaster::detail::has_expected_interface_names(expected, actual));
 }
 
 TEST(TouchStateBroadcasterDetailTest, InitializesAndPopulatesTouchStateMessage)
@@ -221,19 +237,19 @@ TEST(TouchStateBroadcasterTest, CleanupAndErrorClearCachedRuntimeState)
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::state_interface_names(
       broadcaster)
-      .empty());
+    .empty());
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::sensor_names(broadcaster)
-      .empty());
+    .empty());
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::hand_name(broadcaster)
-      .empty());
+    .empty());
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::topic_name(broadcaster)
-      .empty());
+    .empty());
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::message(broadcaster)
-      .fingers.empty());
+    .fingers.empty());
 
   brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::set_runtime_state(
     broadcaster, "right", "/right_touch_states", sensor_names, state_interface_names);
@@ -244,16 +260,16 @@ TEST(TouchStateBroadcasterTest, CleanupAndErrorClearCachedRuntimeState)
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::state_interface_names(
       broadcaster)
-      .empty());
+    .empty());
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::sensor_names(broadcaster)
-      .empty());
+    .empty());
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::hand_name(broadcaster)
-      .empty());
+    .empty());
   EXPECT_TRUE(
     brainco_hand_touch_broadcaster::TouchStateBroadcasterTestAccess::topic_name(broadcaster)
-      .empty());
+    .empty());
 }
 
 }  // namespace

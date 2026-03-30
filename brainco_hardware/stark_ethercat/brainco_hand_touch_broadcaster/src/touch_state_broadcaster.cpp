@@ -1,3 +1,17 @@
+// Copyright 2026 Joyson Robot
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "brainco_hand_touch_broadcaster/touch_state_broadcaster.hpp"
 
 #include "pluginlib/class_list_macros.hpp"
@@ -25,8 +39,7 @@ TouchStateBroadcaster::command_interface_configuration() const
 controller_interface::InterfaceConfiguration
 TouchStateBroadcaster::state_interface_configuration() const
 {
-  if (!state_interface_names_.empty())
-  {
+  if (!state_interface_names_.empty()) {
     return {
       controller_interface::interface_configuration_type::INDIVIDUAL,
       state_interface_names_};
@@ -34,14 +47,12 @@ TouchStateBroadcaster::state_interface_configuration() const
 
   std::string hand_name;
   std::vector<std::string> sensor_names;
-  if (get_node() != nullptr)
-  {
+  if (get_node() != nullptr) {
     get_node()->get_parameter("hand_name", hand_name);
     get_node()->get_parameter("sensor_names", sensor_names);
   }
 
-  if (!detail::is_valid_hand_name(hand_name))
-  {
+  if (!detail::is_valid_hand_name(hand_name)) {
     return {
       controller_interface::interface_configuration_type::INDIVIDUAL,
       {}};
@@ -166,8 +177,7 @@ bool TouchStateBroadcaster::has_required_state_interfaces() const
 
   std::vector<std::string> actual_interface_names;
   actual_interface_names.reserve(state_interfaces_.size());
-  for (std::size_t index = 0; index < state_interface_names_.size(); ++index)
-  {
+  for (std::size_t index = 0; index < state_interface_names_.size(); ++index) {
     actual_interface_names.push_back(state_interfaces_[index].get_name());
   }
 
@@ -190,7 +200,7 @@ controller_interface::return_type TouchStateBroadcaster::update(
     return controller_interface::return_type::ERROR;
   }
 
-  message_.header.stamp = time.to_msg();
+  message_.header.stamp = static_cast<builtin_interfaces::msg::Time>(time);
   message_.hand_name = hand_name_;
   detail::assign_touch_values(message_, read_touch_values());
   publisher_->publish(message_);

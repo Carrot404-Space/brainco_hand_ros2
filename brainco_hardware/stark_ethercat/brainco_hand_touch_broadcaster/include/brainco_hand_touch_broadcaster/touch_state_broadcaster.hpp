@@ -1,3 +1,17 @@
+// Copyright 2026 Joyson Robot
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #ifndef BRAINCO_HAND_TOUCH_BROADCASTER__TOUCH_STATE_BROADCASTER_HPP_
 #define BRAINCO_HAND_TOUCH_BROADCASTER__TOUCH_STATE_BROADCASTER_HPP_
 
@@ -103,7 +117,9 @@ inline std::vector<std::string> configured_state_interface_names(
   const std::string & hand_name, const std::vector<std::string> & sensor_names)
 {
   std::string error_message;
-  if (!is_valid_hand_name(hand_name) || !validate_sensor_names(hand_name, sensor_names, &error_message))
+  if (
+    !is_valid_hand_name(hand_name) ||
+    !validate_sensor_names(hand_name, sensor_names, &error_message))
   {
     return {};
   }
