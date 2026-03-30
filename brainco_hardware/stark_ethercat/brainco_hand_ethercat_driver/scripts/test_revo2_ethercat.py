@@ -342,31 +342,31 @@ class ROS2EnvironmentChecker:
             # 检查硬件接口（带重试机制）
             hardware_component_detected = False
             for attempt in range(max_retries):
-            result = subprocess.run(['ros2', 'control', 'list_hardware_interfaces'],
-                                  capture_output=True, text=True, timeout=5)
-            if result.returncode == 0:
-                results['hardware_interfaces'] = result.stdout.strip()
-                    
+                result = subprocess.run(['ros2', 'control', 'list_hardware_interfaces'],
+                                        capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    results['hardware_interfaces'] = result.stdout.strip()
+
                     # 只在第一次或最后一次尝试时打印完整信息
                     if attempt == 0 or attempt == max_retries - 1:
-                print("✓ 硬件接口:")
-                print(results['hardware_interfaces'])
+                        print("✓ 硬件接口:")
+                        print(results['hardware_interfaces'])
 
-                # 检查硬件组件类型
-                interfaces_output = results['hardware_interfaces']
-                    
+                    # 检查硬件组件类型
+                    interfaces_output = results['hardware_interfaces']
+
                     # 检查组件名称
-                if 'Revo2RightEthercatSystem' in interfaces_output:
-                    results['hardware_component_type'] = 'right'
-                    print("✓ 检测到右手硬件组件")
+                    if 'Revo2RightEthercatSystem' in interfaces_output:
+                        results['hardware_component_type'] = 'right'
+                        print("✓ 检测到右手硬件组件")
                         hardware_component_detected = True
                         break
-                elif 'Revo2LeftEthercatSystem' in interfaces_output:
-                    results['hardware_component_type'] = 'left'
-                    print("✓ 检测到左手硬件组件")
+                    elif 'Revo2LeftEthercatSystem' in interfaces_output:
+                        results['hardware_component_type'] = 'left'
+                        print("✓ 检测到左手硬件组件")
                         hardware_component_detected = True
                         break
-                else:
+                    else:
                         # 如果没找到组件名称，检查是否有可用的接口（作为备用检测）
                         # 检查是否有 command interfaces 或 state interfaces
                         if 'command interfaces' in interfaces_output.lower() or 'state interfaces' in interfaces_output.lower():
@@ -393,7 +393,7 @@ class ROS2EnvironmentChecker:
             
             # 如果所有重试都失败
             if not hardware_component_detected:
-                    results['hardware_component_type'] = None
+                results['hardware_component_type'] = None
                 # 检查是否有接口可用（即使没有组件名称）
                 if 'hardware_interfaces' in results:
                     interfaces_output = results['hardware_interfaces']
