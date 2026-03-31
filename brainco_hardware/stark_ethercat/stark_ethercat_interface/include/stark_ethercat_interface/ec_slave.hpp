@@ -60,14 +60,19 @@ public:
     paramters_ = slave_paramters;
     return true;
   }
+  void setSensorStateInterfaces(std::vector<std::vector<double>> * sensor_state_interfaces)
+  {
+    sensor_state_interfaces_ptr_ = sensor_state_interfaces;
+  }
   uint32_t vendor_id_;
   uint32_t product_id_;
 
   std::vector<SdoConfigEntry> sdo_config;
 
 protected:
-  std::vector<double> * state_interface_ptr_;
-  std::vector<double> * command_interface_ptr_;
+  std::vector<double> * state_interface_ptr_ = nullptr;
+  std::vector<double> * command_interface_ptr_ = nullptr;
+  std::vector<std::vector<double>> * sensor_state_interfaces_ptr_ = nullptr;
   std::unordered_map<std::string, std::string> paramters_;
   bool is_operational_ = false;
 };

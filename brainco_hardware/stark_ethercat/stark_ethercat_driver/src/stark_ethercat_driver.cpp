@@ -23,6 +23,28 @@
 
 namespace stark_ethercat_driver
 {
+namespace
+{
+
+void appendSensorStateInterfaceMappings(
+  const hardware_interface::HardwareInfo & info,
+  std::unordered_map<std::string, std::string> & module_params)
+{
+  for (size_t sensor_index = 0; sensor_index < info.sensors.size(); ++sensor_index)
+  {
+    const auto & sensor = info.sensors[sensor_index];
+    for (size_t state_index = 0; state_index < sensor.state_interfaces.size(); ++state_index)
+    {
+      const auto & state_interface = sensor.state_interfaces[state_index];
+      module_params[std::string("sensor_state_interface/") + sensor.name + "/" +
+                    state_interface.name] =
+        std::to_string(sensor_index) + ":" + std::to_string(state_index);
+    }
+  }
+}
+
+}  // namespace
+
 CallbackReturn EthercatDriver::on_init(const hardware_interface::HardwareInfo & info)
 {
   RCLCPP_INFO(rclcpp::get_logger("EthercatDriver"), "build time: %s - %s", __DATE__, __TIME__);
@@ -147,6 +169,7 @@ CallbackReturn EthercatDriver::on_init(const hardware_interface::HardwareInfo & 
         module_params[i]["command_interface/" + info_.gpios[g].command_interfaces[k].name] =
           std::to_string(k);
       }
+      appendSensorStateInterfaceMappings(info_, module_params[i]);
       try
       {
         // Ensure only a single module instance is created for the whole device
@@ -160,7 +183,8 @@ CallbackReturn EthercatDriver::on_init(const hardware_interface::HardwareInfo & 
         }
 
         auto module = ec_loader_.createSharedInstance(module_params[i].at("plugin"));
-        // Bind the module to aggregated joint buffers so it can access all joints at once
+        module->setSensorStateInterfaces(&hw_sensor_states_);
+        // Bind aggregated joint buffers to the module instance.
         if (!module->setupSlave(module_params[i], &agg_joint_states_, &agg_joint_commands_))
         {
           RCLCPP_FATAL(
