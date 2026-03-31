@@ -98,6 +98,13 @@ def generate_launch_description():
         output="both",
     )
 
+    touch_state_broadcaster_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=[[hand_type, "_touch_state_broadcaster"], "-c", "/controller_manager"],
+        output="both",
+    )
+
     robot_controller_spawner = Node(
         package="controller_manager",
         executable="spawner",
@@ -109,6 +116,7 @@ def generate_launch_description():
         control_node,
         robot_state_pub_node,
         joint_state_broadcaster_spawner,
+        touch_state_broadcaster_spawner,
         robot_controller_spawner,
     ]
 

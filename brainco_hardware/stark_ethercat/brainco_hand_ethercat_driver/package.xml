@@ -30,6 +30,7 @@
   
   <exec_depend>joint_state_broadcaster</exec_depend>
   <exec_depend>joint_trajectory_controller</exec_depend>
+  <exec_depend>brainco_hand_touch_broadcaster</exec_depend>
   
   <exec_depend>tf2_ros</exec_depend>
   

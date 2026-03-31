@@ -89,6 +89,18 @@ private:
   };
   std::array<JointInterface, NUM_FINGER_MOTORS> joint_interfaces_;
 
+  static constexpr size_t NUM_TOUCH_FINGERS = 5;
+  struct TouchInterface
+  {
+    int sensor_index = -1;
+    int normal_force_state = -1;
+    int tangential_force_state = -1;
+    int direction_state = -1;
+    int proximity_state = -1;
+    int status_state = -1;
+  };
+  std::array<TouchInterface, NUM_TOUCH_FINGERS> touch_interfaces_;
+
   // 当前状态缓存
   std::array<double, NUM_FINGER_MOTORS> last_position_cmds_;
   std::array<double, NUM_FINGER_MOTORS> current_position_states_;
@@ -99,7 +111,6 @@ private:
   std::array<uint16_t, NUM_FINGER_MOTORS> finger_motor_status_;  // 马达状态值
 
   // 触觉数据缓存 (Touch设备专用，共5个手指)
-  static constexpr size_t NUM_TOUCH_FINGERS = 5;
   std::array<uint16_t, NUM_TOUCH_FINGERS> touch_normal_force_;      // 法向力 (0.01N精度)
   std::array<uint16_t, NUM_TOUCH_FINGERS> touch_tangential_force_;  // 切向力 (0.01N精度)
   std::array<uint16_t, NUM_TOUCH_FINGERS> touch_direction_;         // 方向角 (度)
@@ -123,6 +134,13 @@ private:
   void setupSyncManagers();
   void setupDomainMapping();
   void setupInterfaceMapping();
+  bool setupTouchInterfaceMapping();
+  bool trySetupTouchInterfaceMapping(const std::string & hand_prefix, std::string & error_message);
+  bool parseSensorStateInterfaceMapping(
+    const std::string & sensor_name, const std::string & field_name, int & sensor_index,
+    int & state_index);
+  void writeTouchState(int sensor_index, int state_index, double value);
+  void publishTouchStateSnapshot();
 
   // 单手指控制更新
   void updateActiveFingerFromCommands();

@@ -77,7 +77,46 @@
                 <state_interface name="effort"/>
             </joint>
 
+            <sensor name="right_thumb_touch">
+                <state_interface name="normal_force"/>
+                <state_interface name="tangential_force"/>
+                <state_interface name="direction"/>
+                <state_interface name="proximity"/>
+                <state_interface name="status"/>
+            </sensor>
+
+            <sensor name="right_index_touch">
+                <state_interface name="normal_force"/>
+                <state_interface name="tangential_force"/>
+                <state_interface name="direction"/>
+                <state_interface name="proximity"/>
+                <state_interface name="status"/>
+            </sensor>
+
+            <sensor name="right_middle_touch">
+                <state_interface name="normal_force"/>
+                <state_interface name="tangential_force"/>
+                <state_interface name="direction"/>
+                <state_interface name="proximity"/>
+                <state_interface name="status"/>
+            </sensor>
+
+            <sensor name="right_ring_touch">
+                <state_interface name="normal_force"/>
+                <state_interface name="tangential_force"/>
+                <state_interface name="direction"/>
+                <state_interface name="proximity"/>
+                <state_interface name="status"/>
+            </sensor>
+
+            <sensor name="right_pinky_touch">
+                <state_interface name="normal_force"/>
+                <state_interface name="tangential_force"/>
+                <state_interface name="direction"/>
+                <state_interface name="proximity"/>
+                <state_interface name="status"/>
+            </sensor>
+
         </ros2_control>
     </xacro:macro>
 </robot>
-

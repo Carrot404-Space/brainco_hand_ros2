@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
+#include <sstream>
 #include <rclcpp/rclcpp.hpp>
 #include <stark_ethercat_interface/ec_sdo_manager.hpp>
 #include "revo2_ethercat_plugins/execute_command.hpp"
@@ -44,6 +46,7 @@ Revo2JointsSystemSlave::Revo2JointsSystemSlave()
   finger_motor_status_.fill(0);
 
   // 初始化触觉数据
+  touch_interfaces_.fill(TouchInterface{});
   touch_normal_force_.fill(0);
   touch_tangential_force_.fill(0);
   touch_direction_.fill(0xFFFF);  // 0xFFFF表示方向无效
@@ -140,6 +143,10 @@ bool Revo2JointsSystemSlave::setupSlave(
 
   // 设置ROS接口映射
   setupInterfaceMapping();
+  if (is_touch_device_ && !setupTouchInterfaceMapping())
+  {
+    return false;
+  }
 
   // 配置 SDO（上电后写入期望配置：unit_mode=1 物理量模式）
   // XXX 重新上电生效
@@ -288,6 +295,236 @@ void Revo2JointsSystemSlave::setupInterfaceMapping()
   }
 
   REVO2_LOG_INFO("Interface mapping configured for Revo2 joints system");
+}
+
+bool Revo2JointsSystemSlave::setupTouchInterfaceMapping()
+{
+  touch_interfaces_.fill(TouchInterface{});
+
+  if (sensor_state_interfaces_ptr_ == nullptr)
+  {
+    REVO2_LOG_ERROR(
+      "Touch device detected, but sensor state buffers were not bound into Revo2JointsSystemSlave");
+    return false;
+  }
+
+  std::array<std::string, 2> hand_prefixes = {"left", "right"};
+  const auto module_name_it = paramters_.find("name");
+  if (module_name_it != paramters_.end())
+  {
+    if (
+      module_name_it->second.find("Right") != std::string::npos ||
+      module_name_it->second.find("right") != std::string::npos)
+    {
+      hand_prefixes = {"right", "left"};
+    }
+  }
+
+  std::ostringstream error_stream;
+  for (size_t i = 0; i < hand_prefixes.size(); ++i)
+  {
+    std::string error_message;
+    if (trySetupTouchInterfaceMapping(hand_prefixes[i], error_message))
+    {
+      REVO2_LOG_INFO("Touch sensor interfaces mapped for %s hand", hand_prefixes[i].c_str());
+      return true;
+    }
+
+    if (i > 0)
+    {
+      error_stream << " | ";
+    }
+    error_stream << hand_prefixes[i] << ": " << error_message;
+  }
+
+  REVO2_LOG_ERROR(
+    "Touch device requires 25 sensor state interface mappings. %s",
+    error_stream.str().c_str());
+  return false;
+}
+
+bool Revo2JointsSystemSlave::trySetupTouchInterfaceMapping(
+  const std::string & hand_prefix, std::string & error_message)
+{
+  static const std::array<std::string, NUM_TOUCH_FINGERS> kFingerNames = {
+    "thumb", "index", "middle", "ring", "pinky"};
+
+  std::array<TouchInterface, NUM_TOUCH_FINGERS> resolved_interfaces;
+  resolved_interfaces.fill(TouchInterface{});
+  std::vector<std::string> missing_fields;
+  std::vector<std::string> invalid_fields;
+
+  for (size_t finger_index = 0; finger_index < NUM_TOUCH_FINGERS; ++finger_index)
+  {
+    const std::string sensor_name = hand_prefix + "_" + kFingerNames[finger_index] + "_touch";
+    auto & resolved_interface = resolved_interfaces[finger_index];
+
+    const auto bind_field = [&](const std::string & field_name, int & state_index) {
+      int mapped_sensor_index = -1;
+      int mapped_state_index = -1;
+      if (
+        !parseSensorStateInterfaceMapping(
+          sensor_name, field_name, mapped_sensor_index, mapped_state_index))
+      {
+        missing_fields.push_back(sensor_name + "/" + field_name);
+        return;
+      }
+
+      if (resolved_interface.sensor_index == -1)
+      {
+        resolved_interface.sensor_index = mapped_sensor_index;
+      }
+      else if (resolved_interface.sensor_index != mapped_sensor_index)
+      {
+        invalid_fields.push_back(sensor_name + "/" + field_name);
+        return;
+      }
+
+      state_index = mapped_state_index;
+    };
+
+    bind_field("normal_force", resolved_interface.normal_force_state);
+    bind_field("tangential_force", resolved_interface.tangential_force_state);
+    bind_field("direction", resolved_interface.direction_state);
+    bind_field("proximity", resolved_interface.proximity_state);
+    bind_field("status", resolved_interface.status_state);
+  }
+
+  if (!missing_fields.empty() || !invalid_fields.empty())
+  {
+    std::ostringstream stream;
+    if (!missing_fields.empty())
+    {
+      stream << "missing ";
+      for (size_t i = 0; i < missing_fields.size(); ++i)
+      {
+        if (i > 0)
+        {
+          stream << ", ";
+        }
+        stream << missing_fields[i];
+      }
+    }
+    if (!invalid_fields.empty())
+    {
+      if (!missing_fields.empty())
+      {
+        stream << "; ";
+      }
+      stream << "invalid ";
+      for (size_t i = 0; i < invalid_fields.size(); ++i)
+      {
+        if (i > 0)
+        {
+          stream << ", ";
+        }
+        stream << invalid_fields[i];
+      }
+    }
+    error_message = stream.str();
+    return false;
+  }
+
+  touch_interfaces_ = resolved_interfaces;
+  return true;
+}
+
+bool Revo2JointsSystemSlave::parseSensorStateInterfaceMapping(
+  const std::string & sensor_name, const std::string & field_name, int & sensor_index,
+  int & state_index)
+{
+  const std::string key = "sensor_state_interface/" + sensor_name + "/" + field_name;
+  const auto mapping_it = paramters_.find(key);
+  if (mapping_it == paramters_.end())
+  {
+    return false;
+  }
+
+  const size_t separator = mapping_it->second.find(':');
+  if (separator == std::string::npos)
+  {
+    REVO2_LOG_ERROR("Invalid sensor mapping format for %s: %s", key.c_str(), mapping_it->second.c_str());
+    return false;
+  }
+
+  try
+  {
+    sensor_index = std::stoi(mapping_it->second.substr(0, separator));
+    state_index = std::stoi(mapping_it->second.substr(separator + 1));
+  }
+  catch (const std::exception & e)
+  {
+    REVO2_LOG_ERROR(
+      "Failed to parse sensor mapping for %s: %s (%s)", key.c_str(), mapping_it->second.c_str(),
+      e.what());
+    return false;
+  }
+
+  if (sensor_index < 0 || state_index < 0)
+  {
+    REVO2_LOG_ERROR(
+      "Negative sensor mapping index for %s: sensor=%d state=%d", key.c_str(), sensor_index,
+      state_index);
+    return false;
+  }
+
+  if (sensor_state_interfaces_ptr_ == nullptr)
+  {
+    return false;
+  }
+
+  if (static_cast<size_t>(sensor_index) >= sensor_state_interfaces_ptr_->size())
+  {
+    REVO2_LOG_ERROR(
+      "Sensor mapping out of range for %s: sensor=%d size=%zu", key.c_str(), sensor_index,
+      sensor_state_interfaces_ptr_->size());
+    return false;
+  }
+
+  const auto & sensor_states = sensor_state_interfaces_ptr_->at(static_cast<size_t>(sensor_index));
+  if (static_cast<size_t>(state_index) >= sensor_states.size())
+  {
+    REVO2_LOG_ERROR(
+      "State mapping out of range for %s: state=%d size=%zu", key.c_str(), state_index,
+      sensor_states.size());
+    return false;
+  }
+
+  return true;
+}
+
+void Revo2JointsSystemSlave::writeTouchState(int sensor_index, int state_index, double value)
+{
+  if (sensor_state_interfaces_ptr_ == nullptr || sensor_index < 0 || state_index < 0)
+  {
+    return;
+  }
+
+  auto & sensor_states = sensor_state_interfaces_ptr_->at(static_cast<size_t>(sensor_index));
+  sensor_states[static_cast<size_t>(state_index)] = value;
+}
+
+void Revo2JointsSystemSlave::publishTouchStateSnapshot()
+{
+  for (size_t i = 0; i < NUM_TOUCH_FINGERS; ++i)
+  {
+    const auto & touch_interface = touch_interfaces_[i];
+    writeTouchState(
+      touch_interface.sensor_index, touch_interface.normal_force_state,
+      static_cast<double>(touch_normal_force_[i]) * 0.01);
+    writeTouchState(
+      touch_interface.sensor_index, touch_interface.tangential_force_state,
+      static_cast<double>(touch_tangential_force_[i]) * 0.01);
+    writeTouchState(
+      touch_interface.sensor_index, touch_interface.direction_state,
+      touch_direction_[i] == 0xFFFF ? -1.0 : static_cast<double>(touch_direction_[i]));
+    writeTouchState(
+      touch_interface.sensor_index, touch_interface.proximity_state,
+      static_cast<double>(touch_proximity_[i]));
+    writeTouchState(
+      touch_interface.sensor_index, touch_interface.status_state,
+      static_cast<double>(touch_status_[i]));
+  }
 }
 
 void Revo2JointsSystemSlave::processData(size_t index, uint8_t * domain_address)
@@ -680,6 +917,8 @@ void Revo2JointsSystemSlave::processData(size_t index, uint8_t * domain_address)
         {
           touch_status_[i] = read_u16(domain_address + i * 2);
         }
+
+        publishTouchStateSnapshot();
 
         // 法向力，切向力是 16 位的无符号数据。数值单位是 100 * N， 例如切向力 1000 表示 1000 / 100
         // N, 即 10 N。法向力，切向力的测量范围是 0 ~ 25 N。 切向力方向是 16
