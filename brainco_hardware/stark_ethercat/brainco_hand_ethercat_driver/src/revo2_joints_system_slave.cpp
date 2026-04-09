@@ -929,35 +929,35 @@ void Revo2JointsSystemSlave::processData(size_t index, uint8_t * domain_address)
         // 位为数据异常志位： Bit0 表示原始值错误， Bit1 表示原始值长时间未更新， Bit2
         // 表示触发超时。
 
-        // 每 秒打印一次触觉数据
-        static auto clock = rclcpp::Clock();
-        RCLCPP_INFO_THROTTLE(
-          rclcpp::get_logger("revo2_touch"), clock, 30 * 1000,
-          "Touch Data - Finger0: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X | "
-          "Finger1: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X | "
-          "Finger2: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X | "
-          "Finger3: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X | "
-          "Finger4: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X",
-          // Finger 0 (拇指)
-          touch_normal_force_[0] * 0.01, touch_tangential_force_[0] * 0.01,
-          touch_direction_[0] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[0]),
-          touch_proximity_[0], touch_status_[0] >> 8, touch_status_[0] & 0xFF,
-          // Finger 1 (食指)
-          touch_normal_force_[1] * 0.01, touch_tangential_force_[1] * 0.01,
-          touch_direction_[1] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[1]),
-          touch_proximity_[1], touch_status_[1] >> 8, touch_status_[1] & 0xFF,
-          // Finger 2 (中指)
-          touch_normal_force_[2] * 0.01, touch_tangential_force_[2] * 0.01,
-          touch_direction_[2] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[2]),
-          touch_proximity_[2], touch_status_[2] >> 8, touch_status_[2] & 0xFF,
-          // Finger 3 (无名指)
-          touch_normal_force_[3] * 0.01, touch_tangential_force_[3] * 0.01,
-          touch_direction_[3] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[3]),
-          touch_proximity_[3], touch_status_[3] >> 8, touch_status_[3] & 0xFF,
-          // Finger 4 (小指)
-          touch_normal_force_[4] * 0.01, touch_tangential_force_[4] * 0.01,
-          touch_direction_[4] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[4]),
-          touch_proximity_[4], touch_status_[4] >> 8, touch_status_[4] & 0xFF);
+        // // 每 秒打印一次触觉数据
+        // static auto clock = rclcpp::Clock();
+        // RCLCPP_INFO_THROTTLE(
+        //   rclcpp::get_logger("revo2_touch"), clock, 30 * 1000,
+        //   "Touch Data - Finger0: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X | "
+        //   "Finger1: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X | "
+        //   "Finger2: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X | "
+        //   "Finger3: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X | "
+        //   "Finger4: N=%.2fN T=%.2fN D=%d° P=%u S=0x%02X %02X",
+        //   // Finger 0 (拇指)
+        //   touch_normal_force_[0] * 0.01, touch_tangential_force_[0] * 0.01,
+        //   touch_direction_[0] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[0]),
+        //   touch_proximity_[0], touch_status_[0] >> 8, touch_status_[0] & 0xFF,
+        //   // Finger 1 (食指)
+        //   touch_normal_force_[1] * 0.01, touch_tangential_force_[1] * 0.01,
+        //   touch_direction_[1] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[1]),
+        //   touch_proximity_[1], touch_status_[1] >> 8, touch_status_[1] & 0xFF,
+        //   // Finger 2 (中指)
+        //   touch_normal_force_[2] * 0.01, touch_tangential_force_[2] * 0.01,
+        //   touch_direction_[2] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[2]),
+        //   touch_proximity_[2], touch_status_[2] >> 8, touch_status_[2] & 0xFF,
+        //   // Finger 3 (无名指)
+        //   touch_normal_force_[3] * 0.01, touch_tangential_force_[3] * 0.01,
+        //   touch_direction_[3] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[3]),
+        //   touch_proximity_[3], touch_status_[3] >> 8, touch_status_[3] & 0xFF,
+        //   // Finger 4 (小指)
+        //   touch_normal_force_[4] * 0.01, touch_tangential_force_[4] * 0.01,
+        //   touch_direction_[4] == 0xFFFF ? -1 : static_cast<int>(touch_direction_[4]),
+        //   touch_proximity_[4], touch_status_[4] >> 8, touch_status_[4] & 0xFF);
       }
       break;
 
