@@ -74,6 +74,10 @@ bool Revo2JointsSystemSlave::setupSlave(
     ctrl_param_duration_ms_ =
       static_cast<uint16_t>(std::stoi(paramters_["ctrl_param_duration_ms"]));
   }
+  if (paramters_.find("master_id") != paramters_.end())
+  {
+    master_id_ = std::stoi(paramters_["master_id"]);
+  }
   if (paramters_.find("assign_activate") != paramters_.end())
   {
     assign_activate_ = static_cast<uint32_t>(std::stoul(paramters_["assign_activate"], nullptr, 0));
@@ -89,16 +93,18 @@ bool Revo2JointsSystemSlave::setupSlave(
   {
     std::string command;
     std::string output;
+    const std::string upload_prefix =
+      "ethercat upload -m " + std::to_string(master_id_) + " -p 0 ";
     // 读取固件版本
-    command = "ethercat upload -t string -p 0 0x8000 0x11";
+    command = upload_prefix + "-t string 0x8000 0x11";
     output = ExecuteCommand::run(command);
     REVO2_LOG_INFO("Run command: %s, CTRL FW version: %s", command.c_str(), output.c_str());
-    command = "ethercat upload -t string -p 0 0x8000 0x13";
+    command = upload_prefix + "-t string 0x8000 0x13";
     output = ExecuteCommand::run(command);
     REVO2_LOG_INFO("Run command: %s, Wrist FW version: %s", command.c_str(), output.c_str());
 
     // 检测设备类型
-    command = "ethercat upload -t string -p 0 0x1008 0x00";
+    command = upload_prefix + "-t string 0x1008 0x00";
     output = ExecuteCommand::run(command);
     REVO2_LOG_INFO("Run command: %s, Device name: %s", command.c_str(), output.c_str());
     // 去除前后空白和换行
@@ -107,7 +113,7 @@ bool Revo2JointsSystemSlave::setupSlave(
     is_touch_device_ = (output.find("Touch") != std::string::npos);
     REVO2_LOG_INFO("Device type detected: %s", is_touch_device_ ? "Touch" : "Pro");
 
-    command = "ethercat upload -t raw -p 0 0x8000 0x05";
+    command = upload_prefix + "-t raw 0x8000 0x05";
     output = ExecuteCommand::run(command);
     REVO2_LOG_INFO("Run command: %s, unit_mode: %s", command.c_str(), output.c_str());
     int value = 0;

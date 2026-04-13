@@ -126,6 +126,7 @@ private:
   uint8_t active_finger_id_;  // 当前正在控制的手指ID
   bool finger_control_busy_;  // 是否有手指正在运动中
 
+  int master_id_ = 0;
   bool is_physical_mode_ = false;
   bool is_touch_device_ = false;
 

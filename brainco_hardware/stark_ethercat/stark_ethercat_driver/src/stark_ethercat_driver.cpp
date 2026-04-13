@@ -155,6 +155,7 @@ CallbackReturn EthercatDriver::on_init(const hardware_interface::HardwareInfo & 
         module_params[i]["command_interface/" + info_.joints[j].command_interfaces[k].name] =
           std::to_string(k);
       }
+      module_params[i]["master_id"] = std::to_string(master_id_);
       try
       {
         auto module = ec_loader_.createSharedInstance(module_params[i].at("plugin"));
@@ -195,6 +196,7 @@ CallbackReturn EthercatDriver::on_init(const hardware_interface::HardwareInfo & 
         module_params[i]["command_interface/" + info_.gpios[g].command_interfaces[k].name] =
           std::to_string(k);
       }
+      module_params[i]["master_id"] = std::to_string(master_id_);
       appendSensorStateInterfaceMappings(info_, module_params[i]);
       try
       {
@@ -248,6 +250,7 @@ CallbackReturn EthercatDriver::on_init(const hardware_interface::HardwareInfo & 
         module_params[i]["command_interface/" + info_.sensors[s].command_interfaces[k].name] =
           std::to_string(k);
       }
+      module_params[i]["master_id"] = std::to_string(master_id_);
       try
       {
         auto module = ec_loader_.createSharedInstance(module_params[i].at("plugin"));
