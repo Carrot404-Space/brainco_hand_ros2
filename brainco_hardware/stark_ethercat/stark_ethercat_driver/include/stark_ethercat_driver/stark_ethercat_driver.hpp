@@ -100,10 +100,11 @@ private:
   pluginlib::ClassLoader<stark_ethercat_interface::EcSlave> ec_loader_{
     "stark_ethercat_interface", "stark_ethercat_interface::EcSlave"};
 
-  int control_frequency_;
-  stark_ethercat_interface::EcMaster master_;
+  int master_id_{0};
+  int control_frequency_{0};
+  std::unique_ptr<stark_ethercat_interface::EcMaster> master_;
   std::mutex ec_mutex_;
-  bool activated_;
+  bool activated_{false};
 
   // runtime health monitor
   std::thread health_thread_;

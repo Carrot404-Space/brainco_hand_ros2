@@ -25,6 +25,11 @@ def generate_launch_description():
             description="运动时间参数，单位ms，1ms为以最快速度运动",
         ),
         DeclareLaunchArgument(
+            "master_id",
+            default_value="0",
+            description="EtherCAT master id",
+        ),
+        DeclareLaunchArgument(
             "robot_controller",
             default_value="left_revo2_hand_controller",
             description="Robot controller to start.",
@@ -40,6 +45,7 @@ def generate_launch_description():
     # Initialize Arguments
     prefix = LaunchConfiguration("prefix")
     ctrl_param_duration_ms = LaunchConfiguration("ctrl_param_duration_ms")
+    master_id = LaunchConfiguration("master_id")
     robot_controller = LaunchConfiguration("robot_controller")
     hand_type = LaunchConfiguration("hand_type")
 
@@ -61,6 +67,9 @@ def generate_launch_description():
             " ",
             "ctrl_param_duration_ms:=",
             ctrl_param_duration_ms,
+            " ",
+            "master_id:=",
+            master_id,
         ]
     )
     

@@ -14,6 +14,7 @@
 
 #include "stark_ethercat_driver/stark_ethercat_driver.hpp"
 
+#include <exception>
 #include <tinyxml2.h>
 #include <regex>
 #include <string>
@@ -56,6 +57,31 @@ CallbackReturn EthercatDriver::on_init(const hardware_interface::HardwareInfo & 
 
   const std::lock_guard<std::mutex> lock(ec_mutex_);
   activated_ = false;
+  master_id_ = 0;
+
+  if (info_.hardware_parameters.find("master_id") != info_.hardware_parameters.end())
+  {
+    try
+    {
+      master_id_ = std::stoi(info_.hardware_parameters.at("master_id"));
+    }
+    catch (const std::exception & ex)
+    {
+      RCLCPP_FATAL(
+        rclcpp::get_logger("EthercatDriver"), "Invalid master_id '%s': %s",
+        info_.hardware_parameters.at("master_id").c_str(), ex.what());
+      return CallbackReturn::ERROR;
+    }
+  }
+
+  if (master_id_ < 0)
+  {
+    RCLCPP_FATAL(rclcpp::get_logger("EthercatDriver"), "master_id must be non-negative.");
+    return CallbackReturn::ERROR;
+  }
+
+  master_ = std::make_unique<stark_ethercat_interface::EcMaster>(master_id_);
+  RCLCPP_INFO(rclcpp::get_logger("EthercatDriver"), "Using EtherCAT master_id=%d", master_id_);
 
   hw_joint_states_.resize(info_.joints.size());
   for (uint j = 0; j < info_.joints.size(); j++)
@@ -349,11 +375,11 @@ CallbackReturn EthercatDriver::on_activate(const rclcpp_lifecycle::State & /*pre
 
   // start EC and wait until state operative
 
-  master_.setCtrlFrequency(control_frequency_);
+  master_->setCtrlFrequency(control_frequency_);
 
   for (auto i = 0ul; i < ec_modules_.size(); i++)
   {
-    master_.addSlave(
+    master_->addSlave(
       std::stod(ec_module_parameters_[i]["alias"]), std::stod(ec_module_parameters_[i]["position"]),
       ec_modules_[i].get());
   }
@@ -364,8 +390,8 @@ CallbackReturn EthercatDriver::on_activate(const rclcpp_lifecycle::State & /*pre
     for (auto & sdo : ec_modules_[i]->sdo_config)
     {
       uint32_t abort_code;
-      int ret =
-        master_.configSlaveSdo(std::stod(ec_module_parameters_[i]["position"]), sdo, &abort_code);
+      int ret = master_->configSlaveSdo(
+        std::stod(ec_module_parameters_[i]["position"]), sdo, &abort_code);
       RCLCPP_INFO(
         rclcpp::get_logger("EthercatDriver"),
         "configSlaveSdo index: %04X, sub_index: %02X, data: %d, ret: %d", sdo.index, sdo.sub_index,
@@ -380,7 +406,7 @@ CallbackReturn EthercatDriver::on_activate(const rclcpp_lifecycle::State & /*pre
     }
   }
 
-  if (!master_.activate())
+  if (!master_->activate())
   {
     RCLCPP_ERROR(rclcpp::get_logger("EthercatDriver"), "Activate EcMaster failed");
     return CallbackReturn::ERROR;
@@ -405,7 +431,7 @@ CallbackReturn EthercatDriver::on_activate(const rclcpp_lifecycle::State & /*pre
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, NULL);
     // update EtherCAT bus
 
-    master_.update();
+    master_->update();
     // RCLCPP_INFO(rclcpp::get_logger("EthercatDriver"), "updated!");
 
     // check if operational
@@ -430,7 +456,7 @@ CallbackReturn EthercatDriver::on_activate(const rclcpp_lifecycle::State & /*pre
       return CallbackReturn::ERROR;
     }
     // calculate next shot. carry over nanoseconds into microseconds.
-    t.tv_nsec += master_.getInterval();
+    t.tv_nsec += master_->getInterval();
     while (t.tv_nsec >= 1000000000)
     {
       t.tv_nsec -= 1000000000;
@@ -444,7 +470,7 @@ CallbackReturn EthercatDriver::on_activate(const rclcpp_lifecycle::State & /*pre
 
   // 初始化命令=当前状态，以避免首次 write 发送未定义/零指令引发“抖动”
   // 进行一次同步读以填充聚合状态缓冲
-  master_.readData();
+  master_->readData();
   for (uint j = 0; j < info_.joints.size(); j++)
   {
     size_t state_base = joint_state_offsets_[j];
@@ -486,8 +512,8 @@ CallbackReturn EthercatDriver::on_activate(const rclcpp_lifecycle::State & /*pre
           if (lock.owns_lock() && activated_)
           {
             bool unhealthy =
-              (!master_.isLinkUp() || master_.slavesResponding() == 0 ||
-               !master_.anySlaveOperational());
+              (!master_->isLinkUp() || master_->slavesResponding() == 0 ||
+               !master_->anySlaveOperational());
             if (unhealthy)
             {
               RCLCPP_ERROR_THROTTLE(
@@ -500,7 +526,7 @@ CallbackReturn EthercatDriver::on_activate(const rclcpp_lifecycle::State & /*pre
         if (deactivate_pending_)
         {
           const std::lock_guard<std::mutex> lock(ec_mutex_);
-          master_.deactivate();
+          master_->deactivate();
           activated_ = false;
           deactivate_pending_ = false;
         }
@@ -520,12 +546,12 @@ CallbackReturn EthercatDriver::on_deactivate(const rclcpp_lifecycle::State & /*p
   {
     health_thread_.join();
   }
-  master_.deactivate();
+  master_->deactivate();
 
   RCLCPP_INFO(rclcpp::get_logger("EthercatDriver"), "Stopping ...please wait...");
 
   // stop EC and disconnect
-  master_.stop();
+  master_->stop();
 
   RCLCPP_INFO(rclcpp::get_logger("EthercatDriver"), "System successfully stopped!");
 
@@ -540,17 +566,18 @@ hardware_interface::return_type EthercatDriver::read(
   if (lock.owns_lock() && activated_)
   {
     // 运行时链路/从站健壮性检测
-    if (!master_.isLinkUp() || master_.slavesResponding() == 0 || !master_.anySlaveOperational())
+    if (!master_->isLinkUp() || master_->slavesResponding() == 0 ||
+        !master_->anySlaveOperational())
     {
       static rclcpp::Clock steady_clock(RCL_STEADY_TIME);
       RCLCPP_ERROR_THROTTLE(
         rclcpp::get_logger("EthercatDriver"), steady_clock, 2000,
-        "EtherCAT offline or not operational (link=%d, slaves=%u, anyOP=%d).", master_.isLinkUp(),
-        master_.slavesResponding(), master_.anySlaveOperational());
+        "EtherCAT offline or not operational (link=%d, slaves=%u, anyOP=%d).",
+        master_->isLinkUp(), master_->slavesResponding(), master_->anySlaveOperational());
       deactivate_pending_ = true;
       return hardware_interface::return_type::ERROR;
     }
-    master_.readData();
+    master_->readData();
     // Copy aggregated states into per-joint state buffers for ros2_control exposure
     for (uint j = 0; j < info_.joints.size(); j++)
     {
@@ -575,13 +602,14 @@ hardware_interface::return_type EthercatDriver::write(
   if (lock.owns_lock() && activated_)
   {
     // 运行时链路/从站健壮性检测
-    if (!master_.isLinkUp() || master_.slavesResponding() == 0 || !master_.anySlaveOperational())
+    if (!master_->isLinkUp() || master_->slavesResponding() == 0 ||
+        !master_->anySlaveOperational())
     {
       static rclcpp::Clock steady_clock(RCL_STEADY_TIME);
       RCLCPP_ERROR_THROTTLE(
         rclcpp::get_logger("EthercatDriver"), steady_clock, 2000,
-        "EtherCAT offline or not operational (link=%d, slaves=%u, anyOP=%d).", master_.isLinkUp(),
-        master_.slavesResponding(), master_.anySlaveOperational());
+        "EtherCAT offline or not operational (link=%d, slaves=%u, anyOP=%d).",
+        master_->isLinkUp(), master_->slavesResponding(), master_->anySlaveOperational());
       deactivate_pending_ = true;
       return hardware_interface::return_type::ERROR;
     }
@@ -607,7 +635,7 @@ hardware_interface::return_type EthercatDriver::write(
         }
       }
     }
-    master_.writeData();
+    master_->writeData();
   }
   return hardware_interface::return_type::OK;
 }
